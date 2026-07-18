@@ -18,17 +18,17 @@ func scan_games() -> Array[GameInfo]:
 		return results
 
 	dir.list_dir_begin()
-	var name := dir.get_next()
-	while name != "":
-		if dir.current_is_dir() and not name.begins_with("."):
-			var info := _scan_game_folder(GAMES_DIR.path_join(name))
+	var directory_name := dir.get_next()
+	while directory_name != "":
+		if dir.current_is_dir() and not directory_name.begins_with("."):
+			var info := _scan_game_folder(GAMES_DIR.path_join(directory_name))
 			if info != null:
 				if info.is_launchable():
 					results.append(info)
 				else:
 					var missing := "exec" if info.exec_path == "" else "pck"
-					scan_warnings.append("SKIP: %s (missing %s)" % [name, missing])
-		name = dir.get_next()
+					scan_warnings.append("SKIP: %s (missing %s)" % [directory_name, missing])
+		directory_name = dir.get_next()
 	dir.list_dir_end()
 	return results
 

@@ -299,7 +299,7 @@ func _scroll_to_selected() -> void:
 	if game_list.get_child_count() <= selected_index:
 		return
 	var entry := game_list.get_child(selected_index)
-	var target := entry.position.y - scroll_container.size.y / 2.0 + entry.size.y / 2.0
+	var target : float = entry.position.y - scroll_container.size.y / 2.0 + entry.size.y / 2.0
 	target = clampf(target, 0.0, maxf(0.0, game_list.size.y - scroll_container.size.y))
 	var tween := create_tween()
 	tween.tween_property(scroll_container, "scroll_vertical", int(target), 0.25) \
