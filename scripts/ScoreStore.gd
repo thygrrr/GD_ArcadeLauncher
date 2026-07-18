@@ -26,9 +26,9 @@ func save_scores(game_id: String, scores: Array) -> void:
 		return
 	f.store_string(JSON.stringify(scores, "  "))
 
-func submit_score(game_id: String, name: String, score: int) -> void:
+func submit_score(game_id: String, player_name: String, score: int) -> void:
 	var scores := load_scores(game_id)
-	scores.append({"name": name, "score": score})
+	scores.append({"name": player_name, "score": score})
 	scores.sort_custom(func(a, b): return int(a["score"]) > int(b["score"]))
 	if scores.size() > MAX_SCORES:
 		scores = scores.slice(0, MAX_SCORES)

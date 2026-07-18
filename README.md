@@ -1,6 +1,6 @@
 # c-base Arcade Launcher
 
-A fullscreen sci-fi arcade game launcher for Godot 4.5, designed for physical arcade cabinets running Ubuntu Linux with X11.
+A fullscreen sci-fi arcade game launcher for Godot 4.7, designed for physical arcade cabinets running Ubuntu Linux with X11.
 
 ## Features
 
@@ -18,7 +18,7 @@ A fullscreen sci-fi arcade game launcher for Godot 4.5, designed for physical ar
 
 - Ubuntu Linux (20.04 or newer recommended)
 - X11 display server (Wayland should be disabled)
-- Godot 4.5 or compatible version
+- Godot 4.7 or compatible version
 - inotify-tools package for live refresh
 
 ## Quick Start
@@ -72,14 +72,14 @@ GD_ArcadeLauncher/
 ├── tools/
 │   └── watch_games.sh     # inotify watcher script
 └── install/
-    └── systemd/
-        ├── arcade-launcher.service
-        └── arcade-watch.service
+	└── systemd/
+		├── arcade-launcher.service
+		└── arcade-watch.service
 ```
 
 ## Development
 
-Built with Godot 4.5 using GDScript.
+Built with Godot 4.7 using GDScript.
 
 ### Input Actions
 
@@ -91,7 +91,7 @@ The launcher uses standard Godot input actions:
 
 ### Building and Exporting
 
-1. Open the project in Godot 4.5
+1. Open the project in Godot 4.7.x
 2. Go to Project → Export
 3. Select Linux/X11 preset
 4. Export as `launcher.x86_64` with embedded PCK or separate `.pck` file

@@ -8,7 +8,9 @@ Type=simple
 User=arcade
 WorkingDirectory=/arcade/launcher
 Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/arcade/.Xauthority
+# Legacy X11 variant — prefer the user units in install/systemd/user/.
+# GDM's cookie lives at /run/user/<uid>/gdm/Xauthority.
+Environment=XAUTHORITY=/run/user/1000/gdm/Xauthority
 ExecStart=/arcade/launcher/launcher.x86_64
 Restart=always
 RestartSec=2

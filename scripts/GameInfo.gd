@@ -11,11 +11,11 @@ var year: int = 0
 
 var folder_path: String = ""
 var exec_path: String = ""
-var pck_path: String = ""
+var launch_args: PackedStringArray = []   # engine-specific, filled by GameScanner
 var icon_path: String = ""
 var screenshot_path: String = ""
 var preview_path: String = ""
 var last_modified: int = 0
 
 func is_launchable() -> bool:
-	return exec_path != "" and pck_path != ""
+	return exec_path != ""

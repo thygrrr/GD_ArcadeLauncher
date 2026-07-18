@@ -4,6 +4,7 @@ extends Control
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 const EVENT_FILE := "/tmp/arcade_event"
+const GAME_LOG_DIR := "/arcade/logs"
 const STATE_FILE := "/arcade/launcher_state.json"
 const ADMIN_HOLD_THRESHOLD := 3.0   # seconds to hold ACCEPT+CANCEL for admin
 const PAGE_SIZE := 5                 # entries to skip on page up/down
@@ -42,6 +43,8 @@ var score_store := ScoreStore.new()
 var games: Array[GameInfo] = []
 var selected_index: int = 0
 var launching: bool = false
+var _game_pid: int = -1
+var _game_log_path: String = ""
 var in_attract_mode: bool = false
 var last_game_id: String = ""
 
@@ -51,7 +54,7 @@ var _attract_blink_timer: float = 0.0
 var _attract_blink_state: bool = true
 var _admin_hold_time: float = 0.0
 var _list_build_id: int = 0
-var _pending_icon_loads: Dictionary = {}   # path -> TextureRect node
+var _texture_cache: Dictionary = {}   # path -> Texture2D (null for failed loads)
 
 var _clock_tick: float = 0.0             # seconds since last clock update
 var _glitch_cooldown: float = 0.0        # seconds until next ambient glitch burst
@@ -60,6 +63,9 @@ var _glitch_layer: CanvasLayer = null    # CanvasLayer hosting effects + glitch 
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# Same WM race guard as Boot.gd, in case the boot scene is skipped
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
 	add_child(scanner)
 	add_child(score_store)
 
@@ -91,6 +97,14 @@ func _ready() -> void:
 	_update_clock()
 
 func _process(delta: float) -> void:
+	# ── Game watchdog: launcher stays alive while a game runs (a frozen
+	# Wayland client gets close-requested) but dormant — input blocked by
+	# the guards, everything below skipped until the game exits.
+	if _game_pid >= 0:
+		if not OS.is_process_running(_game_pid):
+			_on_game_exited()
+		return
+
 	# ── Clock (update once per second) ──
 	_clock_tick += delta
 	if _clock_tick >= 1.0:
@@ -134,21 +148,6 @@ func _process(delta: float) -> void:
 		else:
 			_admin_hold_time = 0.0
 
-	# ── Async icon load poll ──
-	var done_paths: Array[String] = []
-	for path in _pending_icon_loads:
-		var status := ResourceLoader.load_threaded_get_status(path)
-		if status == ResourceLoader.THREAD_LOAD_LOADED:
-			var res := ResourceLoader.load_threaded_get(path)
-			var node: TextureRect = _pending_icon_loads[path]
-			if is_instance_valid(node) and res is Texture2D:
-				node.texture = res
-			done_paths.append(path)
-		elif status == ResourceLoader.THREAD_LOAD_FAILED:
-			done_paths.append(path)
-	for path in done_paths:
-		_pending_icon_loads.erase(path)
-
 func _update_glow_pulse() -> void:
 	_glow_pulse += 0.1
 	if not games.is_empty() and selection_glow.visible:
@@ -159,6 +158,7 @@ func _update_glow_pulse() -> void:
 func _reload_games() -> void:
 	if launching:
 		return
+	_texture_cache.clear()
 	games = scanner.scan_games()
 	games.sort_custom(func(a, b): return a.title.naturalnocasecmp_to(b.title) < 0)
 	_rebuild_list()
@@ -168,7 +168,6 @@ func _rebuild_list() -> void:
 	_list_build_id += 1
 	var build_id := _list_build_id
 
-	_pending_icon_loads.clear()
 	for c in game_list.get_children():
 		c.queue_free()
 
@@ -197,10 +196,7 @@ func _rebuild_list() -> void:
 		# ★ NEW badge: visible if the game was added within the last 24 h
 		new_badge.visible = g.last_modified > 0 and (now - g.last_modified) < NEW_GAME_SECONDS
 
-		# Queue async icon load — no blocking load() in the loop
-		if g.icon_path != "":
-			ResourceLoader.load_threaded_request(g.icon_path)
-			_pending_icon_loads[g.icon_path] = icon_node
+		icon_node.texture = _load_external_texture(g.icon_path)
 
 		button.focus_mode = Control.FOCUS_ALL
 		var idx := i
@@ -299,7 +295,7 @@ func _scroll_to_selected() -> void:
 	if game_list.get_child_count() <= selected_index:
 		return
 	var entry := game_list.get_child(selected_index)
-	var target := entry.position.y - scroll_container.size.y / 2.0 + entry.size.y / 2.0
+	var target : float = entry.position.y - scroll_container.size.y / 2.0 + entry.size.y / 2.0
 	target = clampf(target, 0.0, maxf(0.0, game_list.size.y - scroll_container.size.y))
 	var tween := create_tween()
 	tween.tween_property(scroll_container, "scroll_vertical", int(target), 0.25) \
@@ -329,32 +325,41 @@ func _show_preview_or_fallback(g: GameInfo) -> void:
 	preview.visible      = false
 	icon_or_shot.visible = true
 
-	if g.preview_path != "" and FileAccess.file_exists(g.preview_path):
-		if g.preview_path.ends_with(".ogv"):
-			var stream := VideoStreamTheora.new()
-			stream.file = g.preview_path
-			preview.stream  = stream
-			preview.visible = true
-			icon_or_shot.visible = false
-			preview.play()
-			preview.modulate.a = 0.0
-			var tween := create_tween()
-			tween.tween_property(preview, "modulate:a", 1.0, 0.4)
-			return
+	# Scanner only sets asset paths for files that exist — no re-stat needed
+	if g.preview_path.ends_with(".ogv"):
+		var stream := VideoStreamTheora.new()
+		stream.file = g.preview_path
+		preview.stream  = stream
+		preview.visible = true
+		icon_or_shot.visible = false
+		preview.play()
+		preview.modulate.a = 0.0
+		var tween := create_tween()
+		tween.tween_property(preview, "modulate:a", 1.0, 0.4)
+		return
 
-	var img_path := ""
-	if g.screenshot_path != "" and FileAccess.file_exists(g.screenshot_path):
-		img_path = g.screenshot_path
-	elif g.icon_path != "" and FileAccess.file_exists(g.icon_path):
-		img_path = g.icon_path
-
+	var img_path := g.screenshot_path if g.screenshot_path != "" else g.icon_path
 	if img_path != "":
-		icon_or_shot.texture = load(img_path)
+		icon_or_shot.texture = _load_external_texture(img_path)
 		icon_or_shot.modulate.a = 0.0
 		var tween := create_tween()
 		tween.tween_property(icon_or_shot, "modulate:a", 1.0, 0.4)
 	else:
 		icon_or_shot.texture = null
+
+func _load_external_texture(path: String) -> Texture2D:
+	# Assets live outside the pck (ResourceLoader can't load them) — decode
+	# directly, cached per scan; failed loads cache null.
+	if path == "":
+		return null
+	if _texture_cache.has(path):
+		return _texture_cache[path]
+	var tex: Texture2D = null
+	var img := Image.new()
+	if img.load(path) == OK:
+		tex = ImageTexture.create_from_image(img)
+	_texture_cache[path] = tex
+	return tex
 
 func _stop_preview() -> void:
 	if preview.is_playing():
@@ -439,14 +444,18 @@ func _navigate_list(direction: int) -> void:
 
 # ── Launch ─────────────────────────────────────────────────────────────────────
 func _launch_selected() -> void:
+	# Reentrancy guard — every launch path funnels through here
+	if launching:
+		return
 	if games.is_empty():
 		return
 	var g: GameInfo = games[selected_index]
-	if not g.is_launchable():
-		push_error("Game not launchable: %s" % g.title)
-		return
 
 	launching = true
+	attract_timer.stop()
+	# Focus navigation eats ui_* actions before _unhandled_input sees them —
+	# the GUI layer must be disabled explicitly.
+	get_viewport().gui_disable_input = true
 	last_game_id = g.game_id
 	_save_state()
 
@@ -458,22 +467,34 @@ func _launch_selected() -> void:
 	_fade_out(0.3)
 	await get_tree().create_timer(0.3).timeout
 
-	# Non-blocking spawn — launcher stays alive while game runs
-	var pid := OS.create_process(g.exec_path, ["--main-pack", g.pck_path])
-	if pid < 0:
-		push_error("Failed to launch: %s" % g.title)
-		_fade_in(0.3)
-		title_label.scale    = Vector2(1.0, 1.0)
-		title_label.modulate = Color(1, 1, 1, 1)
-		launching = false
-		return
+	# Non-blocking spawn; the watchdog in _process() ends the session when
+	# the game exits. The sh wrapper logs game output + exit code.
+	DirAccess.make_dir_recursive_absolute(GAME_LOG_DIR)
+	_game_log_path = GAME_LOG_DIR.path_join("%s.log" % g.game_id)
+	var sh_args: PackedStringArray = [
+		"-c",
+		'"$0" "$@" > "%s" 2>&1; echo "[launcher] exit code $?" >> "%s"'
+			% [_game_log_path, _game_log_path],
+		g.exec_path,
+	]
+	sh_args.append_array(g.launch_args)
+	print("LAUNCH: %s %s — game output in %s" % [g.exec_path, " ".join(g.launch_args), _game_log_path])
+	_game_pid = OS.create_process("/bin/sh", sh_args)
+	if _game_pid < 0:
+		push_error("Failed to spawn game '%s'" % g.game_id)
+		_end_game_session()
 
-	# Give WM ~0.75 s to raise the game window before fading back in
-	await get_tree().create_timer(0.75).timeout
-	_fade_in(0.4)
+func _on_game_exited() -> void:
+	print("RETURN: game exited — output and exit code in %s" % _game_log_path)
+	_end_game_session()
 
+func _end_game_session() -> void:
+	_game_pid = -1
+	Input.flush_buffered_events()
+	get_viewport().gui_disable_input = false
 	title_label.scale    = Vector2(1.0, 1.0)
 	title_label.modulate = Color(1, 1, 1, 1)
+	_fade_in(0.4)
 	launching = false
 	_reset_attract_timer()
 
@@ -560,9 +581,8 @@ func _load_state() -> void:
 
 # ── Visual effects ──────────────────────────────────────────────────────────────
 func _setup_effects() -> void:
-	# Single CanvasLayer above UI panels (layer 65) but below the system overlays
-	# (AttractOverlay=60 is below, AdminOverlay=90 and FadeLayer=100 are above).
-	# Glitch bars are spawned into this layer at runtime.
+	# Effects layer 65: above UI and AttractOverlay(60), below AdminOverlay(90)
+	# and FadeLayer(100). Glitch bars spawn here at runtime.
 	_glitch_layer = CanvasLayer.new()
 	_glitch_layer.layer = 65
 	add_child(_glitch_layer)

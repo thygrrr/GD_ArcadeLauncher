@@ -8,33 +8,18 @@ Complete step-by-step installation guide for Ubuntu Linux.
 - Physical access to the machine (for initial setup)
 - SSH access for remote administration
 
-## Step 1: Disable Wayland and Enable X11
+## Step 1: Session Type (Wayland)
 
-The launcher requires X11 for reliable fullscreen window management.
-
-```bash
-# Edit GDM configuration
-sudo nano /etc/gdm3/custom.conf
-```
-
-Add or uncomment this line in the `[daemon]` section:
-
-```ini
-WaylandEnable=false
-```
-
-Save and reboot:
+The cabinet runs the default Ubuntu **Wayland** session — no changes needed.
+The launcher must run as a systemd *user* service inside the session
+(Step 8, Variant A) to reach the compositor.
 
 ```bash
-sudo reboot
+echo $XDG_SESSION_TYPE   # → wayland
 ```
 
-After reboot, verify X11 is active:
-
-```bash
-echo $XDG_SESSION_TYPE
-# Should output: x11
-```
+Godot logging `X11 Display is not available … falling back to wayland` at
+startup is expected and harmless.
 
 ## Step 2: Create Arcade User
 
@@ -136,6 +121,36 @@ ssh arcade@<cabinet-ip> "chmod +x /arcade/tools/watch_games.sh"
 ```
 
 ## Step 8: Install Systemd Services
+
+**Variant A (recommended): user services owned by the desktop user** (the
+auto-login account). They start with the session, inherit its display
+environment, and stop with it.
+
+```bash
+# As the desktop user (the one GDM auto-logs in) on the cabinet:
+mkdir -p ~/.config/systemd/user
+cp install/systemd/user/arcade-launcher.service ~/.config/systemd/user/
+cp install/systemd/user/arcade-watch.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable arcade-launcher.service arcade-watch.service
+systemctl --user start arcade-launcher.service arcade-watch.service
+
+# Check status / logs:
+systemctl --user status arcade-launcher.service
+journalctl --user -u arcade-launcher.service -f
+```
+
+The desktop user needs access to the launcher's files:
+
+```bash
+# Read/execute for launcher + games, write for scores and state
+sudo chown -R <desktop_user>: /arcade
+# (If a separate SFTP upload user writes /arcade/games, use a shared group
+# on that directory instead of exclusive ownership.)
+```
+
+**Variant B: system services** (legacy X11 setup — not suitable for the
+Wayland cabinet):
 
 ```bash
 # Copy service files to systemd directory
@@ -312,9 +327,24 @@ echo "games_changed" > /tmp/arcade_event
 ### Game won't launch
 
 - Ensure executable has +x permission: `chmod +x /arcade/games/my_game/game.x86_64`
-- Check if both `.x86_64` and `.pck` files exist
 - Verify game is built for Linux x86_64
 - Check launcher logs: `sudo journalctl -u arcade-launcher.service -f`
+
+### Launcher logs "X11 Display is not available" / falls back to Wayland
+
+**This is expected and harmless** — the cabinet runs a Wayland session
+(Step 1). Godot tries the x11 driver first, then falls back to Wayland,
+which is where it's supposed to land.
+
+What actually matters is that the launcher runs as a **user service inside
+the graphical session** (Step 8, Variant A) so `WAYLAND_DISPLAY` and
+`XDG_RUNTIME_DIR` are inherited. If the launcher aborts with *no* usable
+display at all, check:
+
+```bash
+systemctl --user show-environment | grep -E "WAYLAND_DISPLAY|DISPLAY|XDG_RUNTIME_DIR"
+# WAYLAND_DISPLAY should be set (usually wayland-0)
+```
 
 ### Display issues
 

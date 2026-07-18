@@ -10,8 +10,8 @@ The c-base Arcade Launcher supports drop-in games via simple folder uploads to `
 
 ```
 /arcade/games/<your_game_folder>/
-├── game.x86_64 or game.AppImage    # Required: Linux executable
-├── game.pck                         # Required: Godot pack file
+├── game.x86_64 or game.AppImage    # Required: Linux executable (any exec-bit file works)
+├── game.pck                         # Bare Godot exports only: pack file, same base name as exec
 ├── game.json                        # Recommended: Metadata
 ├── preview.mp4 or preview.ogv      # Recommended: Gameplay video
 ├── screenshot.png                   # Recommended: Fallback image
@@ -22,32 +22,29 @@ The c-base Arcade Launcher supports drop-in games via simple folder uploads to `
 
 ### 1. Linux Executable
 
-**File name:** Any file ending in `.x86_64` OR `.AppImage`
+The **only required file** — everything else is optional.
+
+**File name:** anything. `*.x86_64` and `*.AppImage` are always recognized;
+any other file with the exec bit set works too (e.g. a bare Unity binary).
+If several qualify, conventionally-named ones win.
 
 **Requirements:**
-- Built for Linux x86_64 architecture
-- Must be executable (`chmod +x`)
-- Godot 4.x game export for Linux
+- Linux x86_64 build
+- Executable bit set (`chmod +x`) — SFTP uploads often drop it!
+
+### 2. Godot Pack File (bare Godot exports only)
+
+Needed only for Godot exports **without an embedded PCK**. Unity games and
+AppImages never need one.
+
+**File name:** same base name as the executable, ending in `.pck` — the
+launcher starts the executable without path arguments, so Godot finds the
+pack by filename. A mismatched name means the game won't start.
 
 **Example:**
 ```bash
-game.x86_64
-my_awesome_game.x86_64
-space_shooter.AppImage
-```
-
-### 2. Godot Pack File
-
-**File name:** Any file ending in `.pck`
-
-**Requirements:**
-- Godot game data pack
-- Must be compatible with the executable
-
-**Example:**
-```bash
-game.pck
-my_awesome_game.pck
+game.x86_64 + game.pck   # ✓
+game.x86_64 + data.pck   # ✗ won't start
 ```
 
 ### 3. Required Input Actions
@@ -68,6 +65,38 @@ func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_exit"):
         get_tree().quit()
 ```
+
+### 4. Display Settings
+
+The launcher starts your game with `--fullscreen`. To avoid a distorted
+picture on arbitrary screens, set in `project.godot`:
+
+```ini
+[display]
+window/stretch/mode="canvas_items"   # or "viewport" for pixel art
+window/stretch/aspect="keep"         # or "expand" — never "ignore" (distorts)
+```
+
+Design for 16:9 (e.g. 1920×1080), but don't assume the exact resolution.
+
+## Unity Games
+
+Upload the Linux build output as-is:
+
+```
+/arcade/games/<your_game_folder>/
+├── mygame.x86_64          # Unity player executable
+├── UnityPlayer.so         # Unity 2019+
+├── mygame_Data/           # Data directory
+└── game.json / screenshot.png / icon.png / preview.ogv   # optional
+```
+
+Detection is automatic (`UnityPlayer.so` or `*_Data`); no `.pck` involved.
+Games are started with `-screen-fullscreen 1`.
+
+**Input:** the Godot InputMap contract doesn't apply — read the cabinet
+controls via Unity's input system, and quit to the launcher on the exit
+button (Godot's `ui_exit` button) via `Application.Quit()`.
 
 ## Recommended Files
 
@@ -145,8 +174,8 @@ The launcher handles missing files gracefully:
 
 | Condition | Launcher Behavior |
 |-----------|------------------|
-| Missing `.x86_64` or `.AppImage` | Game hidden from list |
-| Missing `.pck` | Game hidden from list |
+| No executable in folder | Game hidden from list |
+| Missing `.pck` (bare Godot export) | Game listed but fails to start |
 | Missing `ui_exit` action | Game shown but players can't return to launcher (BAD!) |
 | Missing `game.json` | Uses folder name as title, shows "Unknown" author |
 | Missing `preview.mp4/.ogv` | Falls back to `screenshot.png` |
@@ -250,7 +279,7 @@ rsync -avz my_game/ arcade@<cabinet-ip>:/arcade/games/my_game/
 Before uploading your game:
 
 - [ ] Game exports correctly for Linux x86_64
-- [ ] Both `.x86_64` and `.pck` files are present
+- [ ] Executable is present (bare Godot exports: matching `.pck` too)
 - [ ] Executable has execute permission (`chmod +x game.x86_64`)
 - [ ] `ui_exit` action is implemented and quits the game
 - [ ] All input actions (ui_up, ui_down, ui_accept, ui_cancel) work
@@ -269,8 +298,7 @@ Before uploading your game:
 **Cause:** Missing required files or incorrect file extensions
 
 **Fix:**
-- Ensure `.x86_64` or `.AppImage` file exists
-- Ensure `.pck` file exists
+- Ensure an executable exists and has its exec bit (`chmod +x`)
 - Check file names (case-sensitive on Linux)
 
 ### Can't return to launcher from game

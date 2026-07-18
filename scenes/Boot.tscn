@@ -1,7 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://c8kqx3m5vhn7k"]
+[gd_scene format=3 uid="uid://c8kqx3m5vhn7k"]
 
-[ext_resource type="Script" path="res://scripts/Boot.gd" id="1_boot"]
-[ext_resource type="Shader" path="res://media/shaders/grid_background.gdshader" id="2_grid"]
+[ext_resource type="Script" uid="uid://endrt674otwk" path="res://scripts/Boot.gd" id="1_boot"]
+[ext_resource type="Shader" uid="uid://tyftnfe411xh" path="res://media/shaders/grid_background.gdshader" id="2_grid"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_boot_grid"]
 shader = ExtResource("2_grid")
@@ -11,7 +11,7 @@ shader_parameter/grid_size = 80.0
 shader_parameter/grid_thickness = 1.0
 shader_parameter/scroll_speed = 30.0
 
-[node name="BootRoot" type="Control"]
+[node name="BootRoot" type="Control" unique_id=934731969]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,7 +20,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_boot")
 
-[node name="GridBG" type="ColorRect" parent="."]
+[node name="GridBG" type="ColorRect" parent="." unique_id=662316241]
 material = SubResource("ShaderMaterial_boot_grid")
 layout_mode = 1
 anchors_preset = 15
@@ -29,7 +29,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=177561182]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -44,7 +44,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 30
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="Title" type="Label" parent="VBoxContainer" unique_id=214603407]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0.7, 1, 0.5)
@@ -55,54 +55,51 @@ theme_override_font_sizes/font_size = 64
 text = "C-BASE ARCADE OS"
 horizontal_alignment = 1
 
-[node name="Version" type="Label" parent="VBoxContainer"]
+[node name="Version" type="Label" parent="VBoxContainer" unique_id=55471313]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.7, 0.9, 0.8)
 theme_override_font_sizes/font_size = 24
-text = "VERSION 2.1.8-GODOT"
+text = "VERSION 3.1.8-GODOT"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="VBoxContainer"]
+[node name="Spacer" type="Control" parent="VBoxContainer" unique_id=2126728402]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 
-[node name="BootLog" type="RichTextLabel" parent="VBoxContainer"]
+[node name="BootLog" type="RichTextLabel" parent="VBoxContainer" unique_id=992651276]
 custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/default_color = Color(0, 0.9, 1, 1)
-theme_override_font_sizes/mono_font_size = 18
 theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/mono_font_size = 18
 bbcode_enabled = true
-text = ""
 fit_content = true
 scroll_active = false
 
-[node name="LoadingBar" type="ProgressBar" parent="VBoxContainer"]
+[node name="LoadingBar" type="ProgressBar" parent="VBoxContainer" unique_id=2110300751]
 custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
 max_value = 1.0
 show_percentage = false
 
-[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+[node name="StatusLabel" type="Label" parent="VBoxContainer" unique_id=2021920660]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0.5, 1)
 theme_override_font_sizes/font_size = 20
 text = "INITIALIZING..."
 horizontal_alignment = 1
 
-[node name="BootTimer" type="Timer" parent="."]
+[node name="BootTimer" type="Timer" parent="." unique_id=1716838379]
 wait_time = 0.15
-one_shot = false
 
-[node name="GlitchTimer" type="Timer" parent="."]
+[node name="GlitchTimer" type="Timer" parent="." unique_id=806883550]
 wait_time = 0.3
-one_shot = false
 
-[node name="FadeLayer" type="CanvasLayer" parent="."]
+[node name="FadeLayer" type="CanvasLayer" parent="." unique_id=1456255480]
 layer = 100
 
-[node name="FadeRect" type="ColorRect" parent="FadeLayer"]
+[node name="FadeRect" type="ColorRect" parent="FadeLayer" unique_id=1581480750]
 visible = false
 anchors_preset = 15
 anchor_right = 1.0
