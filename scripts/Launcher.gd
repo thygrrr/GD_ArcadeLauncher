@@ -42,7 +42,6 @@ var score_store := ScoreStore.new()
 var games: Array[GameInfo] = []
 var selected_index: int = 0
 var launching: bool = false
-var _running_pid: int = -1
 var in_attract_mode: bool = false
 var last_game_id: String = ""
 
@@ -91,15 +90,6 @@ func _ready() -> void:
 	_update_clock()
 
 func _process(delta: float) -> void:
-	# ── Running game watchdog ──────────────────────────────────────────────
-	# While the game subprocess is alive the launcher is fully dormant: no
-	# input, no attract mode, no filesystem reloads (events stay on disk and
-	# are picked up after the game exits).
-	if _running_pid >= 0:
-		if not OS.is_process_running(_running_pid):
-			_on_game_exited()
-		return
-
 	# ── Clock (update once per second) ──
 	_clock_tick += delta
 	if _clock_tick >= 1.0:
@@ -443,7 +433,7 @@ func _launch_selected() -> void:
 	# Reentrancy guard: every path that can start a game funnels through here
 	# (accept action, button pressed signal, contact bounce on arcade buttons),
 	# so this is the single place that makes double-launching impossible.
-	if launching or _running_pid >= 0:
+	if launching:
 		return
 	if games.is_empty():
 		return
@@ -469,28 +459,26 @@ func _launch_selected() -> void:
 	_fade_out(0.3)
 	await get_tree().create_timer(0.3).timeout
 
-	# Non-blocking spawn — launcher stays alive while game runs.
+	# BLOCKING launch on the main thread: the launcher process is halted
+	# inside OS.execute() for the game's entire lifetime — no rendering, no
+	# timers, no input processing of any kind until the game exits or crashes.
 	# No --main-pack: official Godot 4.4+ export templates are built without
 	# path-override support and abort on it. The exported binary finds its pck
 	# on its own (embedded, or <exec_basename>.pck next to the executable).
 	# --fullscreen is a display arg (still allowed in export templates) that
 	# forces cabinet-correct behavior even for games exported windowed.
-	var pid := OS.create_process(g.exec_path, ["--fullscreen"])
-	if pid < 0:
-		push_error("Failed to launch: %s" % g.title)
-		get_viewport().gui_disable_input = false
-		_fade_in(0.3)
-		title_label.scale    = Vector2(1.0, 1.0)
-		title_label.modulate = Color(1, 1, 1, 1)
-		launching = false
-		_reset_attract_timer()
-		return
+	var output: Array = []
+	var exit_code := OS.execute(g.exec_path, ["--fullscreen"], output)
+	if exit_code != 0:
+		push_error("Game '%s' exited with code %d" % [g.game_id, exit_code])
 
-	# Stay frozen until the watchdog in _process() sees the pid exit.
-	_running_pid = pid
+	# Input events that queued up in the OS while we were blocked dispatch
+	# during the next frames — swallow them behind the still-active guards
+	# before re-enabling input, so a button mashed in-game can't navigate or
+	# relaunch the moment the launcher wakes.
+	await get_tree().process_frame
+	await get_tree().process_frame
 
-func _on_game_exited() -> void:
-	_running_pid = -1
 	get_viewport().gui_disable_input = false
 	title_label.scale    = Vector2(1.0, 1.0)
 	title_label.modulate = Color(1, 1, 1, 1)
