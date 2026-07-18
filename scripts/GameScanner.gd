@@ -84,6 +84,13 @@ func _scan_game_folder(folder: String) -> GameInfo:
 	# are often a bare "gamename" binary with no extension).
 	if exec_path == "":
 		exec_path = fallback_exec
+	elif _is_linux and not _looks_executable(exec_path):
+		# A conventionally-named "executable" that isn't actually runnable
+		# (empty file from a botched upload, missing exec bit) would exec as
+		# an empty shell script and exit 0 silently — reject it loudly.
+		scan_warnings.append("WARN: %s — %s is empty/not ELF or lacks +x; rejected"
+			% [info.game_id, exec_path.get_file()])
+		exec_path = fallback_exec
 
 	info.exec_path = exec_path
 	info.launch_args = PackedStringArray(ENGINE_ARGS[engine])

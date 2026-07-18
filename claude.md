@@ -10,17 +10,22 @@
 ---
 
 # 0) Target Environment
-- OS: Ubuntu (prefer X11 session; disable Wayland)
+- OS: Ubuntu (Wayland session — intentional, see Wayland note)
 - Display: single monitor inside arcade cabinet
 - Input: arcade joysticks + buttons as USB HID (joystick or keyboard encoder)
 - Runtime: launcher runs fullscreen on boot; games run fullscreen as separate processes
 - Remote admin: SSH-first; no reliance on Wayland remote desktop
 
 ## Wayland note
-We will assume X11 because:
-- more predictable fullscreen focus
-- better remote workflow
-- fewer compositor tantrums
+The cabinet intentionally runs a **Wayland** session (decision 2026-07).
+The launcher runs as a systemd *user* service inside the session so it
+inherits `WAYLAND_DISPLAY`. Consequences:
+- The launcher must never block its main loop while a game runs — a frozen
+  Wayland client stops answering compositor pings and gets close-requested
+  as "not responding". Games are spawned non-blocking with a PID watchdog
+  while input stays disabled.
+- Godot logging "X11 Display is not available … falling back to wayland" at
+  startup is benign/expected on this box.
 
 ---
 

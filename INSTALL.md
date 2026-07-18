@@ -8,33 +8,23 @@ Complete step-by-step installation guide for Ubuntu Linux.
 - Physical access to the machine (for initial setup)
 - SSH access for remote administration
 
-## Step 1: Disable Wayland and Enable X11
+## Step 1: Session Type (Wayland)
 
-The launcher requires X11 for reliable fullscreen window management.
+The cabinet runs the default Ubuntu **Wayland** session — no display-server
+changes are needed. The launcher supports this by running as a systemd *user*
+service inside the graphical session (Step 8, Variant A), which is required:
+a system-level service outside the session cannot reliably reach the Wayland
+compositor.
 
-```bash
-# Edit GDM configuration
-sudo nano /etc/gdm3/custom.conf
-```
-
-Add or uncomment this line in the `[daemon]` section:
-
-```ini
-WaylandEnable=false
-```
-
-Save and reboot:
-
-```bash
-sudo reboot
-```
-
-After reboot, verify X11 is active:
+Verify after login:
 
 ```bash
 echo $XDG_SESSION_TYPE
-# Should output: x11
+# Should output: wayland
 ```
+
+Note: Godot apps log `X11 Display is not available … falling back to wayland`
+at startup on this setup. That is expected and harmless.
 
 ## Step 2: Create Arcade User
 
@@ -350,31 +340,19 @@ echo "games_changed" > /tmp/arcade_event
 
 ### Launcher logs "X11 Display is not available" / falls back to Wayland
 
-This means the launcher is NOT running on X11, and games will misbehave:
-under Wayland the compositor refuses to hand focus to spawned game windows
-(games start invisibly behind the launcher or not at all), Unity games can't
-open a display, and compositor close-requests can make the launcher exit
-cleanly, causing systemd restart loops.
+**This is expected and harmless** — the cabinet runs a Wayland session
+(Step 1). Godot tries the x11 driver first, then falls back to Wayland,
+which is where it's supposed to land.
 
-Fix, in order:
+What actually matters is that the launcher runs as a **user service inside
+the graphical session** (Step 8, Variant A) so `WAYLAND_DISPLAY` and
+`XDG_RUNTIME_DIR` are inherited. If the launcher aborts with *no* usable
+display at all, check:
 
-1. Ensure Wayland is disabled (Step 1 of this guide) — check it wasn't
-   reverted by an Ubuntu update:
-   ```bash
-   grep WaylandEnable /etc/gdm3/custom.conf   # must be: WaylandEnable=false
-   sudo reboot
-   loginctl show-session $(loginctl | awk '/arcade/ {print $1; exit}') -p Type
-   # must be: Type=x11
-   ```
-2. Make sure the service can reach the X server — the `XAUTHORITY` path in
-   `arcade-launcher.service` must point at GDM's cookie for the arcade
-   user's uid:
-   ```bash
-   ls /run/user/$(id -u arcade)/gdm/Xauthority
-   DISPLAY=:0 XAUTHORITY=/run/user/$(id -u arcade)/gdm/Xauthority xrandr
-   # xrandr must print display modes; then reload the service:
-   sudo systemctl daemon-reload && sudo systemctl restart arcade-launcher
-   ```
+```bash
+systemctl --user show-environment | grep -E "WAYLAND_DISPLAY|DISPLAY|XDG_RUNTIME_DIR"
+# WAYLAND_DISPLAY should be set (usually wayland-0)
+```
 
 ### Display issues
 

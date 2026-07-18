@@ -4,6 +4,7 @@ extends Control
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 const EVENT_FILE := "/tmp/arcade_event"
+const GAME_LOG_DIR := "/arcade/logs"
 const STATE_FILE := "/arcade/launcher_state.json"
 const ADMIN_HOLD_THRESHOLD := 3.0   # seconds to hold ACCEPT+CANCEL for admin
 const PAGE_SIZE := 5                 # entries to skip on page up/down
@@ -42,6 +43,8 @@ var score_store := ScoreStore.new()
 var games: Array[GameInfo] = []
 var selected_index: int = 0
 var launching: bool = false
+var _game_pid: int = -1
+var _game_log_path: String = ""
 var in_attract_mode: bool = false
 var last_game_id: String = ""
 
@@ -60,6 +63,9 @@ var _glitch_layer: CanvasLayer = null    # CanvasLayer hosting effects + glitch 
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# Same WM race guard as in Boot.gd, in case the boot scene is skipped.
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
 	add_child(scanner)
 	add_child(score_store)
 
@@ -91,6 +97,17 @@ func _ready() -> void:
 	_update_clock()
 
 func _process(delta: float) -> void:
+	# ── Game watchdog ──────────────────────────────────────────────────────
+	# While a game runs the launcher stays ALIVE (Wayland requires frame
+	# callbacks and ping replies — a frozen client gets close-requested as
+	# "not responding") but dormant: input is blocked by the launching /
+	# gui_disable_input guards, and everything below (attract mode, admin
+	# combo, filesystem reloads) is skipped until the game exits.
+	if _game_pid >= 0:
+		if not OS.is_process_running(_game_pid):
+			_on_game_exited()
+		return
+
 	# ── Clock (update once per second) ──
 	_clock_tick += delta
 	if _clock_tick >= 1.0:
@@ -458,27 +475,32 @@ func _launch_selected() -> void:
 	_fade_out(0.3)
 	await get_tree().create_timer(0.3).timeout
 
-	# BLOCKING launch on the main thread: the launcher process is halted here
-	# for the game's entire lifetime — no rendering, no timers, no input
-	# processing of any kind until the game exits or crashes. The sh wrapper
-	# drops the game's stdout at the OS level (OS.execute would otherwise
-	# buffer it in launcher memory for the game's whole runtime); stderr
-	# stays inherited so game errors still reach the journal.
-	var sh_args: PackedStringArray = ["-c", 'exec "$0" "$@" > /dev/null', g.exec_path]
+	# NON-blocking spawn: the launcher's main loop keeps running (Wayland
+	# close-requests frozen clients), but stays input-dead behind the guards
+	# until the watchdog in _process() sees the game exit. The sh wrapper
+	# writes the game's output and exit code to a per-game log file.
+	DirAccess.make_dir_recursive_absolute(GAME_LOG_DIR)
+	_game_log_path = GAME_LOG_DIR.path_join("%s.log" % g.game_id)
+	var sh_args: PackedStringArray = [
+		"-c",
+		'"$0" "$@" > "%s" 2>&1; echo "[launcher] exit code $?" >> "%s"'
+			% [_game_log_path, _game_log_path],
+		g.exec_path,
+	]
 	sh_args.append_array(g.launch_args)
-	print("LAUNCH: %s %s" % [g.exec_path, " ".join(g.launch_args)])
-	var exit_code := OS.execute("/bin/sh", sh_args)
-	print("RETURN: %s exit code %d" % [g.game_id, exit_code])
-	if exit_code != 0:
-		push_error("Game '%s' exited with code %d" % [g.game_id, exit_code])
+	print("LAUNCH: %s %s — game output in %s" % [g.exec_path, " ".join(g.launch_args), _game_log_path])
+	_game_pid = OS.create_process("/bin/sh", sh_args)
+	if _game_pid < 0:
+		push_error("Failed to spawn game '%s'" % g.game_id)
+		_end_game_session()
 
-	# Input that queued up while we were blocked dispatches under the
-	# still-active guards: pump one frame for OS event delivery, then flush
-	# the input buffer, so a button mashed in-game can't act the moment the
-	# launcher wakes.
-	await get_tree().process_frame
+func _on_game_exited() -> void:
+	print("RETURN: game exited — output and exit code in %s" % _game_log_path)
+	_end_game_session()
+
+func _end_game_session() -> void:
+	_game_pid = -1
 	Input.flush_buffered_events()
-
 	get_viewport().gui_disable_input = false
 	title_label.scale    = Vector2(1.0, 1.0)
 	title_label.modulate = Color(1, 1, 1, 1)

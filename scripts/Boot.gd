@@ -40,6 +40,11 @@ var glitch_active: bool = false
 var _boot_sfx: AudioStreamPlayer
 
 func _ready() -> void:
+	# The project's fullscreen setting can race the window manager at session
+	# startup (launcher sometimes comes up windowed) — re-assert it once the
+	# window actually exists.
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
 	boot_log.text = ""
 	loading_bar.value = 0.0
 
