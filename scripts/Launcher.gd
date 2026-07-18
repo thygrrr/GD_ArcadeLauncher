@@ -42,6 +42,7 @@ var score_store := ScoreStore.new()
 var games: Array[GameInfo] = []
 var selected_index: int = 0
 var launching: bool = false
+var _running_pid: int = -1
 var in_attract_mode: bool = false
 var last_game_id: String = ""
 
@@ -51,7 +52,6 @@ var _attract_blink_timer: float = 0.0
 var _attract_blink_state: bool = true
 var _admin_hold_time: float = 0.0
 var _list_build_id: int = 0
-var _pending_icon_loads: Dictionary = {}   # path -> TextureRect node
 
 var _clock_tick: float = 0.0             # seconds since last clock update
 var _glitch_cooldown: float = 0.0        # seconds until next ambient glitch burst
@@ -91,6 +91,15 @@ func _ready() -> void:
 	_update_clock()
 
 func _process(delta: float) -> void:
+	# ── Running game watchdog ──────────────────────────────────────────────
+	# While the game subprocess is alive the launcher is fully dormant: no
+	# input, no attract mode, no filesystem reloads (events stay on disk and
+	# are picked up after the game exits).
+	if _running_pid >= 0:
+		if not OS.is_process_running(_running_pid):
+			_on_game_exited()
+		return
+
 	# ── Clock (update once per second) ──
 	_clock_tick += delta
 	if _clock_tick >= 1.0:
@@ -134,21 +143,6 @@ func _process(delta: float) -> void:
 		else:
 			_admin_hold_time = 0.0
 
-	# ── Async icon load poll ──
-	var done_paths: Array[String] = []
-	for path in _pending_icon_loads:
-		var status := ResourceLoader.load_threaded_get_status(path)
-		if status == ResourceLoader.THREAD_LOAD_LOADED:
-			var res := ResourceLoader.load_threaded_get(path)
-			var node: TextureRect = _pending_icon_loads[path]
-			if is_instance_valid(node) and res is Texture2D:
-				node.texture = res
-			done_paths.append(path)
-		elif status == ResourceLoader.THREAD_LOAD_FAILED:
-			done_paths.append(path)
-	for path in done_paths:
-		_pending_icon_loads.erase(path)
-
 func _update_glow_pulse() -> void:
 	_glow_pulse += 0.1
 	if not games.is_empty() and selection_glow.visible:
@@ -168,7 +162,6 @@ func _rebuild_list() -> void:
 	_list_build_id += 1
 	var build_id := _list_build_id
 
-	_pending_icon_loads.clear()
 	for c in game_list.get_children():
 		c.queue_free()
 
@@ -197,10 +190,8 @@ func _rebuild_list() -> void:
 		# ★ NEW badge: visible if the game was added within the last 24 h
 		new_badge.visible = g.last_modified > 0 and (now - g.last_modified) < NEW_GAME_SECONDS
 
-		# Queue async icon load — no blocking load() in the loop
 		if g.icon_path != "":
-			ResourceLoader.load_threaded_request(g.icon_path)
-			_pending_icon_loads[g.icon_path] = icon_node
+			icon_node.texture = _load_external_texture(g.icon_path)
 
 		button.focus_mode = Control.FOCUS_ALL
 		var idx := i
@@ -349,12 +340,22 @@ func _show_preview_or_fallback(g: GameInfo) -> void:
 		img_path = g.icon_path
 
 	if img_path != "":
-		icon_or_shot.texture = load(img_path)
+		icon_or_shot.texture = _load_external_texture(img_path)
 		icon_or_shot.modulate.a = 0.0
 		var tween := create_tween()
 		tween.tween_property(icon_or_shot, "modulate:a", 1.0, 0.4)
 	else:
 		icon_or_shot.texture = null
+
+func _load_external_texture(path: String) -> Texture2D:
+	# Game assets live outside the pck, so ResourceLoader/load() can't touch
+	# them in an exported build — decode the image file directly instead.
+	if path == "" or not FileAccess.file_exists(path):
+		return null
+	var img := Image.new()
+	if img.load(path) != OK:
+		return null
+	return ImageTexture.create_from_image(img)
 
 func _stop_preview() -> void:
 	if preview.is_playing():
@@ -439,6 +440,11 @@ func _navigate_list(direction: int) -> void:
 
 # ── Launch ─────────────────────────────────────────────────────────────────────
 func _launch_selected() -> void:
+	# Reentrancy guard: every path that can start a game funnels through here
+	# (accept action, button pressed signal, contact bounce on arcade buttons),
+	# so this is the single place that makes double-launching impossible.
+	if launching or _running_pid >= 0:
+		return
 	if games.is_empty():
 		return
 	var g: GameInfo = games[selected_index]
@@ -447,6 +453,11 @@ func _launch_selected() -> void:
 		return
 
 	launching = true
+	attract_timer.stop()
+	# Joysticks are read globally (not focus-gated), and Control focus
+	# navigation consumes ui_* actions before _unhandled_input ever sees
+	# them — so the GUI layer must be switched off explicitly.
+	get_viewport().gui_disable_input = true
 	last_game_id = g.game_id
 	_save_state()
 
@@ -458,22 +469,32 @@ func _launch_selected() -> void:
 	_fade_out(0.3)
 	await get_tree().create_timer(0.3).timeout
 
-	# Non-blocking spawn — launcher stays alive while game runs
-	var pid := OS.create_process(g.exec_path, ["--main-pack", g.pck_path])
+	# Non-blocking spawn — launcher stays alive while game runs.
+	# No --main-pack: official Godot 4.4+ export templates are built without
+	# path-override support and abort on it. The exported binary finds its pck
+	# on its own (embedded, or <exec_basename>.pck next to the executable).
+	# --fullscreen is a display arg (still allowed in export templates) that
+	# forces cabinet-correct behavior even for games exported windowed.
+	var pid := OS.create_process(g.exec_path, ["--fullscreen"])
 	if pid < 0:
 		push_error("Failed to launch: %s" % g.title)
+		get_viewport().gui_disable_input = false
 		_fade_in(0.3)
 		title_label.scale    = Vector2(1.0, 1.0)
 		title_label.modulate = Color(1, 1, 1, 1)
 		launching = false
+		_reset_attract_timer()
 		return
 
-	# Give WM ~0.75 s to raise the game window before fading back in
-	await get_tree().create_timer(0.75).timeout
-	_fade_in(0.4)
+	# Stay frozen until the watchdog in _process() sees the pid exit.
+	_running_pid = pid
 
+func _on_game_exited() -> void:
+	_running_pid = -1
+	get_viewport().gui_disable_input = false
 	title_label.scale    = Vector2(1.0, 1.0)
 	title_label.modulate = Color(1, 1, 1, 1)
+	_fade_in(0.4)
 	launching = false
 	_reset_attract_timer()
 

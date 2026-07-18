@@ -65,6 +65,13 @@ func _scan_game_folder(folder: String) -> GameInfo:
 	info.exec_path = exec_path
 	info.pck_path = pck_path
 
+	# Games are launched without --main-pack (export templates reject it), so
+	# the exec only finds a pck whose basename matches its own.
+	if exec_path.ends_with(".x86_64") and pck_path != "" \
+			and exec_path.get_file().get_basename() != pck_path.get_file().get_basename():
+		scan_warnings.append("WARN: %s — '%s' won't be found by '%s'; rename it to '%s.pck'" \
+			% [info.game_id, pck_path.get_file(), exec_path.get_file(), exec_path.get_file().get_basename()])
+
 	if FileAccess.file_exists(icon_path): info.icon_path = icon_path
 	if FileAccess.file_exists(screenshot_path): info.screenshot_path = screenshot_path
 	if FileAccess.file_exists(preview_path): info.preview_path = preview_path

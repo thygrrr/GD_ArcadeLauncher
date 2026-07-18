@@ -38,16 +38,22 @@ space_shooter.AppImage
 
 ### 2. Godot Pack File
 
-**File name:** Any file ending in `.pck`
+**File name:** Must have the **same base name as your executable**, ending in `.pck`
 
 **Requirements:**
 - Godot game data pack
 - Must be compatible with the executable
+- Base name must match the executable (e.g. `game.x86_64` + `game.pck`) — the
+  launcher starts your executable with no arguments, and Godot finds the pack
+  by matching filenames. A mismatched name means your game won't start.
+- Exports with an **embedded PCK** work too, but still include a `.pck` file
+  (it can be empty) so the launcher lists the game.
 
 **Example:**
 ```bash
-game.pck
-my_awesome_game.pck
+game.x86_64 + game.pck                        # ✓ names match
+my_awesome_game.x86_64 + my_awesome_game.pck  # ✓ names match
+game.x86_64 + data.pck                        # ✗ game will not start
 ```
 
 ### 3. Required Input Actions
@@ -67,6 +73,27 @@ Example GDScript implementation:
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_exit"):
         get_tree().quit()
+```
+
+### 4. Display Settings
+
+The launcher starts your game with `--fullscreen`, so it will cover the whole
+cabinet screen regardless of your project's window mode. To avoid a distorted
+("squished") picture, your project settings must handle arbitrary screen
+resolutions:
+
+- **Stretch mode:** `canvas_items` (or `viewport` for pixel art)
+- **Stretch aspect:** `keep` (letterboxes) or `expand` — **never `ignore`**,
+  which stretches your game to whatever the screen is and distorts it
+- Design for 16:9 (e.g. 1920×1080), but don't assume the cabinet screen is
+  exactly that resolution
+
+In `project.godot`:
+
+```ini
+[display]
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
 ```
 
 ## Recommended Files
