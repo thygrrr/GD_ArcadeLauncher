@@ -8,11 +8,22 @@
 # "Text file busy" error you get overwriting a running binary in place).
 set -euo pipefail
 
-HOST="${ARCADE_HOST:-arcade@172.31.78.116}"
-BUILD_DIR="$(cd "$(dirname "$0")/../build" && pwd)"
+HOST="${ARCADE_HOST:-alien@172.31.78.116}"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+BUILD_DIR="$PROJECT_DIR/build"
+mkdir -p "$BUILD_DIR"
+
+# Export the Linux build first (preset "Linux" in export_presets.cfg).
+GODOT="${GODOT_EDITOR:-godot}"
+command -v "$GODOT" >/dev/null 2>&1 || {
+  echo "Godot editor not found — set GODOT_EDITOR to your editor binary." >&2
+  exit 1
+}
+echo ">> Exporting Linux build with $GODOT"
+"$GODOT" --headless --path "$PROJECT_DIR" --export-release "Linux" "$BUILD_DIR/launcher.x86_64"
 
 for f in launcher.x86_64 launcher.pck; do
-  [ -f "$BUILD_DIR/$f" ] || { echo "Missing $BUILD_DIR/$f — export the project first." >&2; exit 1; }
+  [ -f "$BUILD_DIR/$f" ] || { echo "Missing $BUILD_DIR/$f — export failed?" >&2; exit 1; }
 done
 
 REMOTE='

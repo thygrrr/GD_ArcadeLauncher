@@ -8,12 +8,24 @@
 # "Text file busy" error you get overwriting a running binary in place).
 
 def main [] {
-    let host = ($env.ARCADE_HOST? | default "arcade@172.31.78.116")
-    let build_dir = ($env.FILE_PWD | path join ".." "build" | path expand)
+    let host = ($env.ARCADE_HOST? | default "alien@172.31.78.116")
+    let project_dir = ($env.FILE_PWD | path join ".." | path expand)
+    let build_dir = ($project_dir | path join "build")
+    mkdir $build_dir
+
+    # Export the Linux build first (preset "Linux" in export_presets.cfg).
+    let godot = ($env.GODOT_EDITOR? | default "godot")
+    print $">> Exporting Linux build with ($godot)"
+    let export = (do { ^$godot --headless --path $project_dir --export-release "Linux" ($build_dir | path join "launcher.x86_64") } | complete)
+    if $export.exit_code != 0 {
+        print $export.stdout
+        print $export.stderr
+        error make {msg: "Godot export failed — is GODOT_EDITOR set and the Linux export template installed?"}
+    }
 
     for f in ["launcher.x86_64" "launcher.pck"] {
         if not ($build_dir | path join $f | path exists) {
-            error make {msg: $"Missing ($build_dir | path join $f) — export the project first."}
+            error make {msg: $"Missing ($build_dir | path join $f) — export failed?"}
         }
     }
 

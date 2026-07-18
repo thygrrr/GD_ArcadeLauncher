@@ -466,7 +466,9 @@ func _launch_selected() -> void:
 	# stays inherited so game errors still reach the journal.
 	var sh_args: PackedStringArray = ["-c", 'exec "$0" "$@" > /dev/null', g.exec_path]
 	sh_args.append_array(g.launch_args)
+	print("LAUNCH: %s %s" % [g.exec_path, " ".join(g.launch_args)])
 	var exit_code := OS.execute("/bin/sh", sh_args)
+	print("RETURN: %s exit code %d" % [g.game_id, exit_code])
 	if exit_code != 0:
 		push_error("Game '%s' exited with code %d" % [g.game_id, exit_code])
 
