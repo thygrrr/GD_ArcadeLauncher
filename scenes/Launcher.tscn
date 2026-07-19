@@ -55,15 +55,6 @@ corner_radius_bottom_left = 8
 shadow_color = Color(0, 0.8, 1, 0.3)
 shadow_size = 8
 
-[sub_resource type="Gradient" id="Gradient_neon"]
-offsets = PackedFloat32Array(0, 0.5, 1)
-colors = PackedColorArray(0, 0.5, 1, 0, 0, 0.8, 1, 1, 0.5, 0, 1, 0)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_glow"]
-gradient = SubResource("Gradient_neon")
-fill = 1
-fill_from = Vector2(0.5, 0.5)
-
 [node name="LauncherRoot" type="Control" unique_id=178912848]
 layout_mode = 3
 anchors_preset = 15
@@ -337,7 +328,6 @@ modulate = Color(0, 0.8, 1, 0.4)
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
-texture = SubResource("GradientTexture2D_glow")
 
 [node name="FadeLayer" type="CanvasLayer" parent="." unique_id=895415558]
 layer = 100
