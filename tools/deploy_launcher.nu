@@ -31,7 +31,9 @@ def main [] {
 
     let remote = r#'
 set -e
-D=/arcade/launcher
+# Binary lives in /arcade directly: exported Godot pins its CWD to the exe
+# dir, so exe dir == data root keeps games/, scores/, logs/ resolving there.
+D=/arcade
 mkdir -p "$D/.new"
 tar -xf - -C "$D/.new"
 chmod +x "$D/.new/launcher.x86_64"

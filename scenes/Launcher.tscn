@@ -1,8 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://bktjro0h7yvnh"]
+[gd_scene format=3 uid="uid://bktjro0h7yvnh"]
 
-[ext_resource type="Script" path="res://scripts/Launcher.gd" id="1_launcher"]
-[ext_resource type="Shader" path="res://media/shaders/grid_background.gdshader" id="2_grid_shader"]
-[ext_resource type="Shader" path="res://media/shaders/scanline.gdshader" id="3_scanline_shader"]
+[ext_resource type="Script" uid="uid://ccnkanailnv3d" path="res://scripts/Launcher.gd" id="1_launcher"]
+[ext_resource type="Shader" uid="uid://tyftnfe411xh" path="res://media/shaders/grid_background.gdshader" id="2_grid_shader"]
+[ext_resource type="Shader" uid="uid://dqve4m5hq3pov" path="res://media/shaders/scanline.gdshader" id="3_scanline_shader"]
+[ext_resource type="PackedScene" uid="uid://dgpwym5xb7nne" path="res://scenes/GameEntry.tscn" id="4_u4rpy"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
 shader = ExtResource("2_grid_shader")
@@ -18,6 +19,13 @@ shader_parameter/scanline_count = 500.0
 shader_parameter/scanline_intensity = 0.1
 shader_parameter/scanline_speed = 0.5
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
+bg_color = Color(0.05, 0.1, 0.2, 0.7)
+border_width_bottom = 3
+border_color = Color(0, 0.9, 1, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.02, 0.05, 0.12, 0.85)
 border_width_left = 2
@@ -31,14 +39,21 @@ corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 shadow_color = Color(0, 0.8, 1, 0.3)
 shadow_size = 8
-shadow_offset = Vector2(0, 0)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
-bg_color = Color(0.05, 0.1, 0.2, 0.7)
-border_width_bottom = 3
-border_color = Color(0, 0.9, 1, 0.8)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u4rpy"]
+bg_color = Color(0.02, 0.05, 0.12, 0.85)
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0.7, 1, 0.6)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.8, 1, 0.3)
+shadow_size = 8
 
 [sub_resource type="Gradient" id="Gradient_neon"]
 offsets = PackedFloat32Array(0, 0.5, 1)
@@ -49,7 +64,7 @@ gradient = SubResource("Gradient_neon")
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 
-[node name="LauncherRoot" type="Control"]
+[node name="LauncherRoot" type="Control" unique_id=178912848]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -58,10 +73,10 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_launcher")
 
-[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+[node name="BackgroundLayer" type="CanvasLayer" parent="." unique_id=2070601376]
 layer = -1
 
-[node name="GridBackground" type="ColorRect" parent="BackgroundLayer"]
+[node name="GridBackground" type="ColorRect" parent="BackgroundLayer" unique_id=932856458]
 material = SubResource("ShaderMaterial_grid")
 anchors_preset = 15
 anchor_right = 1.0
@@ -69,7 +84,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Stars" type="CPUParticles2D" parent="BackgroundLayer"]
+[node name="Stars" type="CPUParticles2D" parent="BackgroundLayer" unique_id=771555867]
 position = Vector2(960, 540)
 amount = 200
 lifetime = 20.0
@@ -83,7 +98,7 @@ scale_amount_min = 0.5
 scale_amount_max = 2.0
 color = Color(0.5, 0.8, 1, 0.6)
 
-[node name="ScanlineOverlay" type="ColorRect" parent="BackgroundLayer"]
+[node name="ScanlineOverlay" type="ColorRect" parent="BackgroundLayer" unique_id=429469015]
 material = SubResource("ShaderMaterial_scanline")
 anchors_preset = 15
 anchor_right = 1.0
@@ -92,7 +107,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Header" type="PanelContainer" parent="."]
+[node name="Header" type="PanelContainer" parent="." unique_id=1044525356]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -100,10 +115,10 @@ offset_bottom = 80.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_header")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Header"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Header" unique_id=1250535412]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="Header/HBoxContainer"]
+[node name="TitleLabel" type="Label" parent="Header/HBoxContainer" unique_id=260863148]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
@@ -116,24 +131,24 @@ text = "◢ C-BASE ARCADE OS ◣"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="StatusIndicator" type="HBoxContainer" parent="Header/HBoxContainer"]
+[node name="StatusIndicator" type="HBoxContainer" parent="Header/HBoxContainer" unique_id=903236184]
 layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="ClockLabel" type="Label" parent="Header/HBoxContainer/StatusIndicator"]
+[node name="ClockLabel" type="Label" parent="Header/HBoxContainer/StatusIndicator" unique_id=860490307]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 0.6)
 theme_override_font_sizes/font_size = 18
 text = "00:00:00"
 vertical_alignment = 1
 
-[node name="OnlineStatus" type="Label" parent="Header/HBoxContainer/StatusIndicator"]
+[node name="OnlineStatus" type="Label" parent="Header/HBoxContainer/StatusIndicator" unique_id=67987926]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0.5, 1)
 theme_override_font_sizes/font_size = 16
 text = "● ONLINE"
 
-[node name="MainLayout" type="HBoxContainer" parent="."]
+[node name="MainLayout" type="HBoxContainer" parent="." unique_id=1983238139]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -146,77 +161,105 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 30
 
-[node name="GameListPanel" type="PanelContainer" parent="MainLayout"]
+[node name="GameListPanel" type="PanelContainer" parent="MainLayout" unique_id=366374453]
 custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/GameListPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/GameListPanel" unique_id=206740575]
 layout_mode = 2
 
-[node name="ListHeader" type="Label" parent="MainLayout/GameListPanel/VBoxContainer"]
+[node name="ListHeader" type="Label" parent="MainLayout/GameListPanel/VBoxContainer" unique_id=382881502]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 28
 text = "▼ AVAILABLE MODULES"
 
-[node name="Separator" type="HSeparator" parent="MainLayout/GameListPanel/VBoxContainer"]
+[node name="Separator" type="HSeparator" parent="MainLayout/GameListPanel/VBoxContainer" unique_id=355087973]
 layout_mode = 2
 theme_override_constants/separation = 10
 theme_override_styles/separator = SubResource("StyleBoxFlat_header")
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainLayout/GameListPanel/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainLayout/GameListPanel/VBoxContainer" unique_id=1373194540]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="GameList" type="VBoxContainer" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer"]
+[node name="GameList" type="VBoxContainer" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer" unique_id=2023226142]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="GameDetailsPanel" type="PanelContainer" parent="MainLayout"]
+[node name="GameEntry" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer/GameList" unique_id=2091677360 instance=ExtResource("4_u4rpy")]
+layout_mode = 2
+
+[node name="GameEntry2" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer/GameList" unique_id=1475347977 instance=ExtResource("4_u4rpy")]
+layout_mode = 2
+
+[node name="GameEntry3" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer/GameList" unique_id=463313027 instance=ExtResource("4_u4rpy")]
+layout_mode = 2
+
+[node name="GameEntry4" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer/GameList" unique_id=2117832996 instance=ExtResource("4_u4rpy")]
+layout_mode = 2
+
+[node name="GameEntry5" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer/GameList" unique_id=1129089224 instance=ExtResource("4_u4rpy")]
+layout_mode = 2
+
+[node name="GameEntry6" parent="MainLayout/GameListPanel/VBoxContainer/ScrollContainer/GameList" unique_id=724057727 instance=ExtResource("4_u4rpy")]
+layout_mode = 2
+
+[node name="GameDetailsPanel" type="PanelContainer" parent="MainLayout" unique_id=321695781]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/GameDetailsPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/GameDetailsPanel" unique_id=1045385518]
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="DetailHeader" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="DetailHeader" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=945069824]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 28
 text = "▼ MODULE DETAILS"
 
-[node name="Separator" type="HSeparator" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="Separator" type="HSeparator" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=495972663]
 layout_mode = 2
 theme_override_constants/separation = 10
 theme_override_styles/separator = SubResource("StyleBoxFlat_header")
 
-[node name="MediaContainer" type="AspectRatioContainer" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
-custom_minimum_size = Vector2(0, 350)
+[node name="MarginContainer" type="MarginContainer" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=949924741]
 layout_mode = 2
-ratio = 1.77778
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
 
-[node name="MediaFrame" type="Panel" parent="MainLayout/GameDetailsPanel/VBoxContainer/MediaContainer"]
+[node name="MediaFrame" type="Panel" parent="MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer" unique_id=1892283250]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_u4rpy")
 
-[node name="IconOrScreenshot" type="TextureRect" parent="MainLayout/GameDetailsPanel/VBoxContainer/MediaContainer"]
-layout_mode = 2
+[node name="IconOrScreenshot" type="TextureRect" parent="MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/MediaFrame" unique_id=1785793187]
+show_behind_parent = true
+custom_minimum_size = Vector2(512, 256)
+layout_mode = 0
+offset_right = 512.0
+offset_bottom = 256.0
 expand_mode = 1
 stretch_mode = 5
 
-[node name="PreviewVideo" type="VideoStreamPlayer" parent="MainLayout/GameDetailsPanel/VBoxContainer/MediaContainer"]
-layout_mode = 2
-autoplay = false
-paused = false
+[node name="PreviewVideo" type="VideoStreamPlayer" parent="MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/MediaFrame" unique_id=788339761]
+show_behind_parent = true
+layout_mode = 0
+offset_top = 98.39551
+offset_right = 606.0
+offset_bottom = 291.6045
 
-[node name="TitleLabel" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=431485121]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0.7, 1, 0.5)
@@ -226,19 +269,19 @@ theme_override_constants/shadow_outline_size = 4
 theme_override_font_sizes/font_size = 42
 text = "SELECT A MODULE"
 
-[node name="AuthorLabel" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="AuthorLabel" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=1202286141]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
 theme_override_font_sizes/font_size = 22
 text = "by Unknown Operator"
 
-[node name="MetaLabel" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="MetaLabel" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=1676503639]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0, 0.8, 0.8)
 theme_override_font_sizes/font_size = 20
 text = "1P • 2024"
 
-[node name="DescriptionLabel" type="RichTextLabel" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="DescriptionLabel" type="RichTextLabel" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=1935307778]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_vertical = 3
@@ -249,11 +292,11 @@ text = "[color=#00DDFF]Awaiting module selection...[/color]"
 fit_content = true
 scroll_active = false
 
-[node name="ScorePanel" type="VBoxContainer" parent="MainLayout/GameDetailsPanel/VBoxContainer"]
+[node name="ScorePanel" type="VBoxContainer" parent="MainLayout/GameDetailsPanel/VBoxContainer" unique_id=919788248]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="ScoreTitle" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel"]
+[node name="ScoreTitle" type="Label" parent="MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel" unique_id=1379182966]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.9, 0, 1)
 theme_override_colors/font_shadow_color = Color(1, 0.7, 0, 0.5)
@@ -263,11 +306,11 @@ theme_override_constants/shadow_outline_size = 4
 theme_override_font_sizes/font_size = 26
 text = "█ HIGH SCORES █"
 
-[node name="ScoreList" type="VBoxContainer" parent="MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel"]
+[node name="ScoreList" type="VBoxContainer" parent="MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel" unique_id=496757829]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Footer" type="PanelContainer" parent="."]
+[node name="Footer" type="PanelContainer" parent="." unique_id=1103780158]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -278,10 +321,10 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_header")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Footer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Footer" unique_id=1973520026]
 layout_mode = 2
 
-[node name="ControlsHint" type="Label" parent="Footer/HBoxContainer"]
+[node name="ControlsHint" type="Label" parent="Footer/HBoxContainer" unique_id=1854821215]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.9, 1, 0.8)
@@ -290,7 +333,7 @@ text = "◄► NAVIGATE  •  PgUp/PgDn JUMP  •  [ACCEPT] LAUNCH"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="GameCountLabel" type="Label" parent="Footer/HBoxContainer"]
+[node name="GameCountLabel" type="Label" parent="Footer/HBoxContainer" unique_id=612103376]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 0.7)
 theme_override_font_sizes/font_size = 20
@@ -298,7 +341,7 @@ text = "MODULE 0 / 0"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="SelectionGlow" type="TextureRect" parent="."]
+[node name="SelectionGlow" type="TextureRect" parent="." unique_id=1892458071]
 visible = false
 modulate = Color(0, 0.8, 1, 0.4)
 layout_mode = 0
@@ -306,10 +349,10 @@ offset_right = 40.0
 offset_bottom = 40.0
 texture = SubResource("GradientTexture2D_glow")
 
-[node name="FadeLayer" type="CanvasLayer" parent="."]
+[node name="FadeLayer" type="CanvasLayer" parent="." unique_id=895415558]
 layer = 100
 
-[node name="FadeRect" type="ColorRect" parent="FadeLayer"]
+[node name="FadeRect" type="ColorRect" parent="FadeLayer" unique_id=757587071]
 visible = false
 anchors_preset = 15
 anchor_right = 1.0
@@ -318,34 +361,33 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
-[node name="DebounceTimer" type="Timer" parent="."]
+[node name="DebounceTimer" type="Timer" parent="." unique_id=579697738]
 wait_time = 0.5
 one_shot = true
 
-[node name="AttractTimer" type="Timer" parent="."]
+[node name="AttractTimer" type="Timer" parent="." unique_id=1593306360]
 wait_time = 30.0
 one_shot = true
 
-[node name="GlowPulseTimer" type="Timer" parent="."]
+[node name="GlowPulseTimer" type="Timer" parent="." unique_id=232976304]
 wait_time = 0.05
 autostart = true
 
-[node name="AttractOverlay" type="CanvasLayer" parent="."]
+[node name="AttractOverlay" type="CanvasLayer" parent="." unique_id=1632982971]
 layer = 60
 visible = false
 
-[node name="AttractBG" type="ColorRect" parent="AttractOverlay"]
+[node name="AttractBG" type="ColorRect" parent="AttractOverlay" unique_id=2050850396]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0.04, 0.55)
 mouse_filter = 2
+color = Color(0, 0, 0.04, 0.55)
 
-[node name="AttractLabel" type="Label" parent="AttractOverlay"]
-layout_mode = 1
-anchor_left = 0.0
+[node name="AttractLabel" type="Label" parent="AttractOverlay" unique_id=386357217]
+anchors_preset = -1
 anchor_top = 0.72
 anchor_right = 1.0
 anchor_bottom = 0.88
@@ -359,21 +401,21 @@ text = "★  PRESS START  ★"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="AdminOverlay" type="CanvasLayer" parent="."]
+[node name="AdminOverlay" type="CanvasLayer" parent="." unique_id=697342687]
 layer = 90
 visible = false
 
-[node name="AdminDim" type="ColorRect" parent="AdminOverlay"]
+[node name="AdminDim" type="ColorRect" parent="AdminOverlay" unique_id=231087477]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.82)
 mouse_filter = 2
+color = Color(0, 0, 0, 0.82)
 
-[node name="AdminPanel" type="PanelContainer" parent="AdminOverlay"]
-layout_mode = 1
+[node name="AdminPanel" type="PanelContainer" parent="AdminOverlay" unique_id=1334055767]
+anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
@@ -386,11 +428,11 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="AdminOverlay/AdminPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="AdminOverlay/AdminPanel" unique_id=552240814]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="AdminTitle" type="Label" parent="AdminOverlay/AdminPanel/VBoxContainer"]
+[node name="AdminTitle" type="Label" parent="AdminOverlay/AdminPanel/VBoxContainer" unique_id=1971105241]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0, 0.8, 1)
 theme_override_colors/font_shadow_color = Color(1, 0, 0.5, 0.5)
@@ -399,27 +441,25 @@ theme_override_font_sizes/font_size = 32
 text = "▮  ADMIN PANEL  ▮"
 horizontal_alignment = 1
 
-[node name="AdminSep" type="HSeparator" parent="AdminOverlay/AdminPanel/VBoxContainer"]
+[node name="AdminSep" type="HSeparator" parent="AdminOverlay/AdminPanel/VBoxContainer" unique_id=1368985995]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxFlat_header")
 
-[node name="AdminInfo" type="RichTextLabel" parent="AdminOverlay/AdminPanel/VBoxContainer"]
+[node name="AdminInfo" type="RichTextLabel" parent="AdminOverlay/AdminPanel/VBoxContainer" unique_id=936713703]
 custom_minimum_size = Vector2(0, 320)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/default_color = Color(0.7, 0.9, 1, 1)
 theme_override_font_sizes/normal_font_size = 20
 bbcode_enabled = true
-text = ""
-scroll_active = true
 
-[node name="AdminCloseHint" type="Label" parent="AdminOverlay/AdminPanel/VBoxContainer"]
+[node name="AdminCloseHint" type="Label" parent="AdminOverlay/AdminPanel/VBoxContainer" unique_id=108581728]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 0.65)
 theme_override_font_sizes/font_size = 18
 text = "[CANCEL] CLOSE  •  Hold ACCEPT+CANCEL (3s) to reopen"
 horizontal_alignment = 1
 
-[node name="UiSfx" type="AudioStreamPlayer" parent="."]
+[node name="UiSfx" type="AudioStreamPlayer" parent="." unique_id=1793774673]
 
-[node name="UiConfirmSfx" type="AudioStreamPlayer" parent="."]
+[node name="UiConfirmSfx" type="AudioStreamPlayer" parent="." unique_id=1432882787]

@@ -1,9 +1,7 @@
 # res://scripts/GameScanner.gd
-# Scans /arcade/games directory and builds GameInfo objects
+# Scans the games/ directory under the working directory and builds GameInfo objects
 extends Node
 class_name GameScanner
-
-const GAMES_DIR := "/arcade/games"
 
 # Per-engine fullscreen args, resolved at scan time so the launcher stays
 # engine-agnostic. Display args only — export templates reject --main-pack;
@@ -21,17 +19,17 @@ var scan_warnings: Array[String] = []
 func scan_games() -> Array[GameInfo]:
 	scan_warnings.clear()
 	var results: Array[GameInfo] = []
-	var dir := DirAccess.open(GAMES_DIR)
+	var dir := DirAccess.open(ArcadePaths.games_dir)
 	if dir == null:
-		push_error("Games directory not found: %s" % GAMES_DIR)
-		scan_warnings.append("ERROR: Cannot open %s" % GAMES_DIR)
+		push_error("Games directory not found: %s" % ArcadePaths.games_dir)
+		scan_warnings.append("ERROR: Cannot open %s" % ArcadePaths.games_dir)
 		return results
 
 	dir.list_dir_begin()
 	var directory_name := dir.get_next()
 	while directory_name != "":
 		if dir.current_is_dir() and not directory_name.begins_with("."):
-			var info := _scan_game_folder(GAMES_DIR.path_join(directory_name))
+			var info := _scan_game_folder(ArcadePaths.games_dir.path_join(directory_name))
 			if info != null:
 				if info.is_launchable():
 					results.append(info)

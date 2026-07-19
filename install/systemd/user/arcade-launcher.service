@@ -6,8 +6,11 @@ After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
-WorkingDirectory=/arcade/launcher
-ExecStart=/arcade/launcher/launcher.x86_64
+# CWD is the data root: the launcher resolves games/, scores/, logs/ under it.
+# The binary sits in /arcade itself because exported Godot chdirs to the exe
+# dir at startup — exe dir and WorkingDirectory must both be the data root.
+WorkingDirectory=/arcade
+ExecStart=/arcade/launcher.x86_64
 Restart=always
 RestartSec=2
 

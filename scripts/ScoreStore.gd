@@ -1,13 +1,12 @@
 # res://scripts/ScoreStore.gd
-# Manages per-game high scores stored in /arcade/scores
+# Manages per-game high scores stored in scores/ under the working directory
 extends Node
 class_name ScoreStore
 
-const SCORES_DIR := "/arcade/scores"
 const MAX_SCORES := 10
 
 func load_scores(game_id: String) -> Array:
-	var path := SCORES_DIR.path_join("%s.json" % game_id)
+	var path := ArcadePaths.scores_dir.path_join("%s.json" % game_id)
 	if not FileAccess.file_exists(path):
 		return []
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -19,8 +18,8 @@ func load_scores(game_id: String) -> Array:
 	return parsed
 
 func save_scores(game_id: String, scores: Array) -> void:
-	DirAccess.make_dir_recursive_absolute(SCORES_DIR)
-	var path := SCORES_DIR.path_join("%s.json" % game_id)
+	DirAccess.make_dir_recursive_absolute(ArcadePaths.scores_dir)
+	var path := ArcadePaths.scores_dir.path_join("%s.json" % game_id)
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return

@@ -5,6 +5,11 @@ export_presets.cfg
 .mono/
 data_*/
 
+games/
+logs/
+tests/
+scores/
+
 # Build artifacts
 builds/
 *.x86_64
@@ -29,7 +34,16 @@ desktop.ini
 
 # Logs
 *.log
-logs/
+
+# Runtime data created next to the launcher (CWD-relative in dev runs).
+# The directories themselves are tracked via .gitkeep; contents are ignored.
+/games/*
+!/games/.gitkeep
+/logs/*
+!/logs/.gitkeep
+/scores/*
+!/scores/.gitkeep
+/launcher_state.json
 
 # Temporary files
 *.tmp

@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://dgpwym5xb7nne"]
+[gd_scene format=3 uid="uid://dgpwym5xb7nne"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
 bg_color = Color(0.02, 0.04, 0.1, 0.6)
@@ -11,20 +11,6 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
-bg_color = Color(0.02, 0.1, 0.2, 0.8)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.8, 1, 0.7)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-shadow_color = Color(0, 0.7, 1, 0.3)
-shadow_size = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pressed"]
 bg_color = Color(0.05, 0.15, 0.25, 0.9)
@@ -40,6 +26,20 @@ corner_radius_bottom_left = 4
 shadow_color = Color(0, 1, 1, 0.5)
 shadow_size = 8
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+bg_color = Color(0.02, 0.1, 0.2, 0.8)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0.8, 1, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0.7, 1, 0.3)
+shadow_size = 4
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_focus"]
 bg_color = Color(0.05, 0.15, 0.25, 0.9)
 border_width_left = 3
@@ -53,10 +53,23 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 shadow_color = Color(0, 0.8, 1, 0.6)
 shadow_size = 10
-shadow_offset = Vector2(0, 0)
 
-[node name="GameEntry" type="Control"]
-custom_minimum_size = Vector2(0, 90)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mhwco"]
+bg_color = Color(0.02, 0.04, 0.1, 0.6)
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0.5, 0.8, 0.4)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="GameEntry" type="Control" unique_id=2091677360]
+custom_minimum_size = Vector2(0, 160)
+custom_maximum_size = Vector2(-1, 160)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -64,7 +77,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="EntryButton" type="Button" parent="."]
+[node name="EntryButton" type="Button" parent="." unique_id=18052813]
 custom_minimum_size = Vector2(450, 85)
 layout_mode = 1
 anchors_preset = 15
@@ -73,12 +86,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_focus")
 flat = true
 
-[node name="HBoxContainer" type="HBoxContainer" parent="EntryButton"]
+[node name="HBoxContainer" type="HBoxContainer" parent="EntryButton" unique_id=339007475]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -91,12 +104,15 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 15
 
-[node name="IconFrame" type="Panel" parent="EntryButton/HBoxContainer"]
-custom_minimum_size = Vector2(70, 70)
+[node name="IconFrame" type="Panel" parent="EntryButton/HBoxContainer" unique_id=524476944]
+custom_minimum_size = Vector2(150, 150)
+custom_maximum_size = Vector2(150, 150)
+propagate_maximum_size = true
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_normal")
+theme_override_styles/panel = SubResource("StyleBoxFlat_mhwco")
 
-[node name="Icon" type="TextureRect" parent="EntryButton/HBoxContainer/IconFrame"]
+[node name="Icon" type="TextureRect" parent="EntryButton/HBoxContainer/IconFrame" unique_id=1871948322]
+show_behind_parent = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -110,13 +126,13 @@ grow_vertical = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="VBoxContainer" type="VBoxContainer" parent="EntryButton/HBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="EntryButton/HBoxContainer" unique_id=1755634547]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="EntryButton/HBoxContainer/VBoxContainer"]
+[node name="Title" type="Label" parent="EntryButton/HBoxContainer/VBoxContainer" unique_id=1604743062]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0.6, 0.8, 0.3)
@@ -125,22 +141,22 @@ theme_override_constants/shadow_offset_y = 1
 theme_override_font_sizes/font_size = 26
 text = "Game Title"
 
-[node name="Meta" type="Label" parent="EntryButton/HBoxContainer/VBoxContainer"]
+[node name="Meta" type="Label" parent="EntryButton/HBoxContainer/VBoxContainer" unique_id=702085400]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0, 0.8, 0.7)
 theme_override_font_sizes/font_size = 18
 text = "1P • 2024"
 
-[node name="NewBadge" type="Label" parent="EntryButton/HBoxContainer/VBoxContainer"]
-layout_mode = 2
+[node name="NewBadge" type="Label" parent="EntryButton/HBoxContainer/VBoxContainer" unique_id=1327661253]
 visible = false
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0, 1)
 theme_override_colors/font_shadow_color = Color(1, 0.5, 0, 0.5)
 theme_override_constants/shadow_outline_size = 3
 theme_override_font_sizes/font_size = 15
 text = "★ NEW"
 
-[node name="StatusIndicator" type="Label" parent="EntryButton/HBoxContainer"]
+[node name="StatusIndicator" type="Label" parent="EntryButton/HBoxContainer" unique_id=839816719]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0.5, 1)
 theme_override_font_sizes/font_size = 32

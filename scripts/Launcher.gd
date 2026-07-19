@@ -4,9 +4,8 @@ extends Control
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 const EVENT_FILE := "/tmp/arcade_event"
-const GAME_LOG_DIR := "/arcade/logs"
-const STATE_FILE := "/arcade/launcher_state.json"
-const ADMIN_HOLD_THRESHOLD := 3.0   # seconds to hold ACCEPT+CANCEL for admin
+const ADMIN_HOLD_THRESHOLD := 3.0   # seconds to hold CANCEL+ACCEPT for admin (cancel first)
+const INSTANCE_LOCK_PORT := 47130    # loopback port doubling as a single-instance lock
 const PAGE_SIZE := 5                 # entries to skip on page up/down
 const NEW_GAME_SECONDS := 86400      # 24 h — games newer than this get ★ NEW badge
 
@@ -17,8 +16,8 @@ const NEW_GAME_SECONDS := 86400      # 24 h — games newer than this get ★ NE
 @onready var author_label: Label             = $MainLayout/GameDetailsPanel/VBoxContainer/AuthorLabel
 @onready var desc_label: RichTextLabel       = $MainLayout/GameDetailsPanel/VBoxContainer/DescriptionLabel
 @onready var meta_label: Label               = $MainLayout/GameDetailsPanel/VBoxContainer/MetaLabel
-@onready var preview: VideoStreamPlayer      = $MainLayout/GameDetailsPanel/VBoxContainer/MediaContainer/PreviewVideo
-@onready var icon_or_shot: TextureRect       = $MainLayout/GameDetailsPanel/VBoxContainer/MediaContainer/IconOrScreenshot
+@onready var preview: VideoStreamPlayer      = $MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/MediaFrame/PreviewVideo
+@onready var icon_or_shot: TextureRect       = $MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/MediaFrame/IconOrScreenshot
 @onready var score_list: VBoxContainer       = $MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel/ScoreList
 @onready var score_panel: VBoxContainer      = $MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel
 @onready var fade_rect: ColorRect            = $FadeLayer/FadeRect
@@ -43,6 +42,11 @@ var score_store := ScoreStore.new()
 var games: Array[GameInfo] = []
 var selected_index: int = 0
 var launching: bool = false
+# Armed by the ui_accept press (or click) that starts a launch; stays armed
+# until the game has returned AND the accept control is physically released
+# (_process clears it). While armed, every ui_accept event is swallowed.
+var _accept_latch: bool = false
+var _instance_lock := TCPServer.new()
 var _game_pid: int = -1
 var _game_log_path: String = ""
 var in_attract_mode: bool = false
@@ -63,6 +67,15 @@ var _glitch_layer: CanvasLayer = null    # CanvasLayer hosting effects + glitch 
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# Single-instance guard: a second launcher (double-started service, manual
+	# run over SSH) would double-spawn games and fight over focus. Binding a
+	# loopback port acts as a cross-process lock; the newcomer exits and
+	# systemd's start limiter stops any restart loop.
+	if _instance_lock.listen(INSTANCE_LOCK_PORT, "127.0.0.1") != OK:
+		push_error("Another launcher instance is already running — exiting.")
+		get_tree().quit()
+		return
+
 	# Same WM race guard as Boot.gd, in case the boot scene is skipped
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
@@ -105,6 +118,12 @@ func _process(delta: float) -> void:
 			_on_game_exited()
 		return
 
+	# ── Launch latch release: ui_accept is only re-armed once the game has
+	# returned AND the control is physically released, so a button held (or
+	# mashed) across a whole game session can never trigger another launch.
+	if _accept_latch and not launching and not Input.is_action_pressed("ui_accept"):
+		_accept_latch = false
+
 	# ── Clock (update once per second) ──
 	_clock_tick += delta
 	if _clock_tick >= 1.0:
@@ -138,7 +157,9 @@ func _process(delta: float) -> void:
 			_attract_blink_state = !_attract_blink_state
 			attract_label.visible = _attract_blink_state
 
-	# ── Admin hold combo: ACCEPT + CANCEL held for 3 s ──
+	# ── Admin hold combo: hold CANCEL first, then ACCEPT, both for 3 s ──
+	# (CANCEL must already be down when ACCEPT is pressed — an ACCEPT press
+	# on its own launches the selected game immediately.)
 	if not admin_overlay.visible and not launching and not in_attract_mode:
 		if Input.is_action_pressed("ui_accept") and Input.is_action_pressed("ui_cancel"):
 			_admin_hold_time += delta
@@ -244,7 +265,7 @@ func _select_game(i: int) -> void:
 			_typewriter_tween.kill()
 		title_label.text  = "NO MODULES DETECTED"
 		author_label.text = ""
-		desc_label.text   = "[color=#00DDFF]Upload a game folder to /arcade/games to begin.[/color]"
+		desc_label.text   = "[color=#00DDFF]Upload a game folder to %s to begin.[/color]" % ArcadePaths.games_dir
 		meta_label.text   = ""
 		_stop_preview()
 		icon_or_shot.texture = null
@@ -384,7 +405,42 @@ func _show_scores(game_id: String) -> void:
 		score_list.add_child(label)
 
 # ── Input ──────────────────────────────────────────────────────────────────────
+func _input(event: InputEvent) -> void:
+	# Hard launch latch, ahead of GUI input. From the ui_accept press that
+	# starts a launch until the game has returned, ALL input is swallowed
+	# here. This also covers focused GameEntry buttons: BaseButton fires
+	# its pressed signal on the *release* of ui_accept, which used to be a
+	# second launch path that bypassed the guards below.
+	if launching or _game_pid >= 0:
+		get_viewport().set_input_as_handled()
+		return
+	if _accept_latch and event.is_action("ui_accept"):
+		# Game returned but accept is still held — keep swallowing presses,
+		# echoes and the eventual release until _process re-arms the latch.
+		get_viewport().set_input_as_handled()
+		return
+
+	# ui_accept is claimed exclusively here, on the press, so exactly one
+	# launch can result from one press. Everything else flows on to the
+	# GUI and _unhandled_input.
+	if not event.is_action_pressed("ui_accept"):
+		return
+	get_viewport().set_input_as_handled()
+	if admin_overlay.visible:
+		return
+	if Input.is_action_pressed("ui_cancel"):
+		return  # ACCEPT joined a held CANCEL: admin-combo attempt, not a launch
+	if in_attract_mode:
+		_exit_attract_mode()
+		return
+	ui_confirm_sfx.play()
+	_reset_attract_timer()
+	_launch_selected()
+
 func _unhandled_input(event: InputEvent) -> void:
+	# ui_accept never reaches this point — launches are handled exclusively
+	# on the press in _input() above.
+
 	# Admin overlay intercepts all input while open
 	if admin_overlay.visible:
 		if event.is_action_pressed("ui_cancel"):
@@ -401,12 +457,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	if event.is_action_pressed("ui_accept"):
-		ui_confirm_sfx.play()
-		_launch_selected()
-		_reset_attract_timer()
-		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("ui_down"):
+	if event.is_action_pressed("ui_down"):
 		ui_sfx.play()
 		_navigate_list(1)
 		_reset_attract_timer()
@@ -444,14 +495,19 @@ func _navigate_list(direction: int) -> void:
 
 # ── Launch ─────────────────────────────────────────────────────────────────────
 func _launch_selected() -> void:
-	# Reentrancy guard — every launch path funnels through here
-	if launching:
+	# Reentrancy guard — every launch path (accept press in _input, mouse
+	# click on an entry) funnels through here
+	if launching or _game_pid >= 0 or admin_overlay.visible:
+		return
+	if in_attract_mode:
+		_exit_attract_mode()
 		return
 	if games.is_empty():
 		return
 	var g: GameInfo = games[selected_index]
 
 	launching = true
+	_accept_latch = true
 	attract_timer.stop()
 	# Focus navigation eats ui_* actions before _unhandled_input sees them —
 	# the GUI layer must be disabled explicitly.
@@ -469,8 +525,8 @@ func _launch_selected() -> void:
 
 	# Non-blocking spawn; the watchdog in _process() ends the session when
 	# the game exits. The sh wrapper logs game output + exit code.
-	DirAccess.make_dir_recursive_absolute(GAME_LOG_DIR)
-	_game_log_path = GAME_LOG_DIR.path_join("%s.log" % g.game_id)
+	DirAccess.make_dir_recursive_absolute(ArcadePaths.logs_dir)
+	_game_log_path = ArcadePaths.logs_dir.path_join("%s.log" % g.game_id)
 	var sh_args: PackedStringArray = [
 		"-c",
 		'"$0" "$@" > "%s" 2>&1; echo "[launcher] exit code $?" >> "%s"'
@@ -547,7 +603,7 @@ func _populate_admin_info() -> void:
 	var now_str := Time.get_datetime_string_from_system(false, true)
 	var text := ""
 	text += "[color=#00FFCC]Games loaded:[/color]  %d\n" % games.size()
-	text += "[color=#00FFCC]Games dir:   [/color]  /arcade/games\n"
+	text += "[color=#00FFCC]Games dir:   [/color]  %s\n" % ArcadePaths.games_dir
 	text += "[color=#00FFCC]System time: [/color]  %s\n" % now_str
 	text += "[color=#00FFCC]Engine:      [/color]  Godot 4.5\n"
 	text += "[color=#00FFCC]Last played: [/color]  %s\n\n" % (last_game_id if last_game_id != "" else "—")
@@ -564,15 +620,15 @@ func _populate_admin_info() -> void:
 
 # ── Persistence ────────────────────────────────────────────────────────────────
 func _save_state() -> void:
-	var f := FileAccess.open(STATE_FILE, FileAccess.WRITE)
+	var f := FileAccess.open(ArcadePaths.state_file, FileAccess.WRITE)
 	if f == null:
 		return
 	f.store_string(JSON.stringify({"last_game_id": last_game_id}))
 
 func _load_state() -> void:
-	if not FileAccess.file_exists(STATE_FILE):
+	if not FileAccess.file_exists(ArcadePaths.state_file):
 		return
-	var f := FileAccess.open(STATE_FILE, FileAccess.READ)
+	var f := FileAccess.open(ArcadePaths.state_file, FileAccess.READ)
 	if f == null:
 		return
 	var parsed: Variant = JSON.parse_string(f.get_as_text())

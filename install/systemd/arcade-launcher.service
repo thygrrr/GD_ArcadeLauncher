@@ -6,12 +6,13 @@ Wants=arcade-watch.service
 [Service]
 Type=simple
 User=arcade
-WorkingDirectory=/arcade/launcher
+# CWD is the data root: the launcher resolves games/, scores/, logs/ under it.
+WorkingDirectory=/arcade
 Environment=DISPLAY=:0
 # Legacy X11 variant — prefer the user units in install/systemd/user/.
 # GDM's cookie lives at /run/user/<uid>/gdm/Xauthority.
 Environment=XAUTHORITY=/run/user/1000/gdm/Xauthority
-ExecStart=/arcade/launcher/launcher.x86_64
+ExecStart=/arcade/launcher.x86_64
 Restart=always
 RestartSec=2
 StandardOutput=journal
