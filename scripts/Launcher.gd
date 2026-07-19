@@ -277,6 +277,7 @@ func _select_game(i: int) -> void:
 			_typewriter_tween.kill()
 		title_label.text  = "NO MODULES DETECTED"
 		author_label.text = ""
+		desc_label.visible_characters = -1
 		desc_label.text   = "[color=#00DDFF]Upload a game folder to %s to begin.[/color]" % ArcadePaths.games_dir
 		meta_label.text   = ""
 		_stop_preview()
@@ -683,21 +684,23 @@ func _update_clock() -> void:
 	var t := Time.get_time_dict_from_system()
 	clock_label.text = "%02d:%02d:%02d" % [t.hour, t.minute, t.second]
 
-func _type_description(plain_text: String) -> void:
+func _type_description(body_text: String) -> void:
 	# Animate the description typing out character-by-character on selection.
+	# Reveal via visible_characters so embedded BBCode is never sliced mid-tag.
 	if _typewriter_tween and _typewriter_tween.is_valid():
 		_typewriter_tween.kill()
-	if plain_text.is_empty():
+	if body_text.is_empty():
+		desc_label.visible_characters = -1
 		desc_label.text = ""
 		return
-	var char_count := plain_text.length()
+	desc_label.text = "[color=#AADDFF]%s[/color]" % body_text
+	var char_count := desc_label.get_total_character_count()
 	# Speed: ~22 ms/char, clamped between 0.3 s and 2.5 s total.
 	var duration := clampf(char_count * 0.022, 0.3, 2.5)
-	desc_label.text = ""
+	desc_label.visible_characters = 0
 	_typewriter_tween = create_tween()
-	_typewriter_tween.tween_method(
-		func(n: int): desc_label.text = "[color=#AADDFF]%s[/color]" % plain_text.left(n),
-		0, char_count, duration
+	_typewriter_tween.tween_property(
+		desc_label, "visible_characters", char_count, duration
 	).set_trans(Tween.TRANS_LINEAR)
 
 func _fire_ambient_glitch() -> void:
