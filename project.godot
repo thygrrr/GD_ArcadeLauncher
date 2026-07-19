@@ -35,6 +35,7 @@ window/size/mode=3
 window/size/resizable=false
 window/stretch/mode="viewport"
 window/stretch/aspect="keep_width"
+display_server/driver.linuxbsd="wayland"
 
 [dotnet]
 

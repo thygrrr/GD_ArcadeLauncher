@@ -11,6 +11,7 @@ var year: int = 0
 
 var folder_path: String = ""
 var exec_path: String = ""
+var engine: String = "godot"              # "godot" or "unity", detected by GameScanner
 var launch_args: PackedStringArray = []   # engine-specific, filled by GameScanner
 var icon_path: String = ""
 var screenshot_path: String = ""

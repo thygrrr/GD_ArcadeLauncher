@@ -87,6 +87,7 @@ func _scan_game_folder(folder: String) -> GameInfo:
 		exec_path = fallback_exec
 
 	info.exec_path = exec_path
+	info.engine = engine
 	info.launch_args = PackedStringArray(ENGINE_ARGS[engine])
 
 	if FileAccess.file_exists(icon_path): info.icon_path = icon_path

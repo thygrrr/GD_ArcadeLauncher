@@ -16,8 +16,8 @@ const NEW_GAME_SECONDS := 86400      # 24 h — games newer than this get ★ NE
 @onready var author_label: Label             = $MainLayout/GameDetailsPanel/VBoxContainer/AuthorLabel
 @onready var desc_label: RichTextLabel       = $MainLayout/GameDetailsPanel/VBoxContainer/DescriptionLabel
 @onready var meta_label: Label               = $MainLayout/GameDetailsPanel/VBoxContainer/MetaLabel
-@onready var preview: VideoStreamPlayer      = $MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/MediaFrame/PreviewVideo
-@onready var icon_or_shot: TextureRect       = $MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/MediaFrame/IconOrScreenshot
+@onready var preview: VideoStreamPlayer      = $MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/PreviewVideo
+@onready var icon_or_shot: TextureRect       = $MainLayout/GameDetailsPanel/VBoxContainer/MarginContainer/IconOrScreenshot
 @onready var score_list: VBoxContainer       = $MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel/ScoreList
 @onready var score_panel: VBoxContainer      = $MainLayout/GameDetailsPanel/VBoxContainer/ScorePanel
 @onready var fade_rect: ColorRect            = $FadeLayer/FadeRect
@@ -67,6 +67,9 @@ var _glitch_layer: CanvasLayer = null    # CanvasLayer hosting effects + glitch 
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# Fullscreen can race the WM at session startup — re-assert it
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	
 	# Single-instance guard: a second launcher (double-started service, manual
 	# run over SSH) would double-spawn games and fight over focus. Binding a
 	# loopback port acts as a cross-process lock; the newcomer exits and
@@ -108,6 +111,15 @@ func _ready() -> void:
 	_fade_in(0.8)
 	_setup_effects()
 	_update_clock()
+
+	# Log the compositor-acknowledged window mode (waits for the WM to settle)
+	# so fullscreen regressions are visible in the journal.
+	await get_tree().create_timer(2.0).timeout
+	print("WINDOW: mode=%d (3=fullscreen) size=%s screen=%s" % [
+		DisplayServer.window_get_mode(),
+		DisplayServer.window_get_size(),
+		DisplayServer.screen_get_size(),
+	])
 
 func _process(delta: float) -> void:
 	# ── Game watchdog: launcher stays alive while a game runs (a frozen
@@ -527,10 +539,14 @@ func _launch_selected() -> void:
 	# the game exits. The sh wrapper logs game output + exit code.
 	DirAccess.make_dir_recursive_absolute(ArcadePaths.logs_dir)
 	_game_log_path = ArcadePaths.logs_dir.path_join("%s.log" % g.game_id)
+	# Godot games get DISPLAY stripped so they pick the native Wayland backend:
+	# mutter ignores fullscreen requests from XWayland clients on the rotated
+	# output. Unity players are X11-only and must keep DISPLAY.
+	var env_prefix := "unset DISPLAY; " if g.engine == "godot" else ""
 	var sh_args: PackedStringArray = [
 		"-c",
-		'"$0" "$@" > "%s" 2>&1; echo "[launcher] exit code $?" >> "%s"'
-			% [_game_log_path, _game_log_path],
+		'%s"$0" "$@" > "%s" 2>&1; echo "[launcher] exit code $?" >> "%s"'
+			% [env_prefix, _game_log_path, _game_log_path],
 		g.exec_path,
 	]
 	sh_args.append_array(g.launch_args)
